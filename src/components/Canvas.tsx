@@ -60,7 +60,7 @@ class Canvas extends React.Component<SnakeState> {
       store.dispatch(stopGame());
       return false;
     }
-    
+
     if (food !== undefined) {
       if (newXPos === food.x && newYPos === food.y)  {
         // TODO: append body
@@ -126,6 +126,11 @@ class Canvas extends React.Component<SnakeState> {
       }
     }
 
+    // hit by body
+    let hitted = this.props.body.findIndex((body) => body.x === x && body.y === y);
+    if (hitted > 0 && hitted < this.props.body.length -1) {
+      return false;
+    }
     return true;
   }
 
