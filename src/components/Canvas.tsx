@@ -1,6 +1,6 @@
 import React, { RefObject } from 'react';
 import { connect } from 'react-redux';
-import { turnUp, turnDown, turnLeft, turnRight, startGame, SnakeState, stopGame, moveSnake, createFood } from '../modules/snake';
+import { turnUp, turnDown, turnLeft, turnRight, startGame, SnakeState, stopGame, moveSnake, createFood, increaseBody } from '../modules/snake';
 import { RootState } from '../modules/index';
 import { store } from '../index';
 
@@ -44,7 +44,7 @@ class Canvas extends React.Component<SnakeState> {
   updateSnake(): boolean {
 
     const { x: xDir, y: yDir } = this.props.direction;
-    let { x, y }  = this.props.position;
+    let { x, y }  = this.props.body[0];
     const { size, food } = this.props;
     if ( JSON.stringify(this.props) === JSON.stringify(this.prevProps) ) {
       return true;
@@ -63,26 +63,38 @@ class Canvas extends React.Component<SnakeState> {
     
     if (food !== undefined) {
       if (newXPos === food.x && newYPos === food.y)  {
-        // TODO: count score
+        // TODO: append body
+        let tail = this.props.body[this.props.body.length -1];
+        let newTailX, newTailY;
+
+        newTailX = tail.x - xDir * size;
+        newTailY = tail.y + yDir * size
+
+        store.dispatch(increaseBody({x: newTailX, y: newTailY}));
         this.createFood();
       }
     }
 
     store.dispatch(moveSnake({
-      x: x + xDir * size, 
-      y: y + yDir * size
+      x: xDir * size, 
+      y: yDir * size
     }));
     return true;
   }
 
-  drawSnake() {
-    let { x, y }  = this.props.position;
+  drawSnake() { 
+    // head
     const size = this.props.size;
     let { _canvas, _ctx } = this.getCanvasAndContext();
-    if (_canvas !== null && _ctx !== null) {
-      _ctx.fillStyle="black";
-      _ctx.fillRect(x , y, size, size);
-    }
+
+    this.props.body.forEach((pos, i) => {
+      let { x, y }  = pos;
+
+      if (_canvas !== null && _ctx !== null) {
+        _ctx.fillStyle= i !== 0 ? "black" : "blue";
+        _ctx.fillRect(x , y, size, size);
+      }
+    })
   }
 
   drawFood() {
@@ -143,7 +155,7 @@ class Canvas extends React.Component<SnakeState> {
   }
 
   animate() {
-    console.log('update...', this.props.direction, this.props.position, this.props.inGame);
+    console.log('update...', this.props.direction, this.props.body[0], this.props.inGame);
     this.clearCanvas();
     if (this.updateSnake()) {
       this.drawFood();
