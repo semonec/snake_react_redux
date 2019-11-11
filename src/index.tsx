@@ -7,7 +7,11 @@ import { createStore } from 'redux';
 import Canvas from './components/Canvas';
 import { Provider } from 'react-redux';
 
-export const store = createStore(rootReducer);
+
+export const store = createStore(
+  rootReducer,
+  (window as any).__REDUX_DEVTOOLS_EXTENSION__ && (window as any).__REDUX_DEVTOOLS_EXTENSION__()
+);
 
 ReactDOM.render(
   <Provider store= {store}>
