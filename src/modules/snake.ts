@@ -12,6 +12,7 @@ const TURN_DOWN= 'snake/TURN_DOWN';
 const START_GAME= 'snake/START_GAME';
 const STOP_GAME= 'snake/STOP_GAME';
 const MOVE_SNAKE = 'snake/MOVE_SNAKE';
+const CREATE_FOOD = 'snake/CREATE_FOOD';
 
 export const turnLeft = createStandardAction(TURN_LEFT)();
 export const turnRight = createStandardAction(TURN_RIGHT)();
@@ -20,8 +21,9 @@ export const turnDown = createStandardAction(TURN_DOWN)();
 export const startGame = createStandardAction(START_GAME)();
 export const stopGame = createStandardAction(STOP_GAME)();
 export const moveSnake = createStandardAction(MOVE_SNAKE)<Snake2DPosition>();
+export const createFood = createStandardAction(CREATE_FOOD)<Snake2DPosition>();
 
-const actions = { turnLeft, turnRight, turnUp, turnDown, startGame, stopGame, moveSnake };
+const actions = { turnLeft, turnRight, turnUp, turnDown, startGame, stopGame, moveSnake, createFood };
 export type SnakeAction = ActionType<typeof actions>;
 
 type Snake2DPosition = {
@@ -35,7 +37,8 @@ export type SnakeState = {
   position: Snake2DPosition,
   speed: number,
   inGame: boolean,
-  size: number
+  size: number,
+  food?: Snake2DPosition
 }
 
 const initialState: SnakeState = {
@@ -47,7 +50,7 @@ const initialState: SnakeState = {
     x: 0,
     y: 0
   },
-  speed: 1,
+  speed: 10,
   inGame: false,
   size: 10,
 }
@@ -60,5 +63,6 @@ const snake = createReducer<SnakeState, SnakeAction>(initialState)
   .handleAction(START_GAME, state => ({...state, inGame: true}))
   .handleAction(STOP_GAME, state => (initialState))
   .handleAction(MOVE_SNAKE, (state, action) => ({...state, position: action.payload }))
+  .handleAction(CREATE_FOOD, (state, action) => ({...state, food: action.payload}))
 
 export default snake;

@@ -1,12 +1,13 @@
 import React, { RefObject } from 'react';
 import { connect } from 'react-redux';
-import { turnUp, turnDown, turnLeft, turnRight, startGame, SnakeState, stopGame, moveSnake } from '../modules/snake';
+import { turnUp, turnDown, turnLeft, turnRight, startGame, SnakeState, stopGame, moveSnake, createFood } from '../modules/snake';
 import { RootState } from '../modules/index';
 import { store } from '../index';
 
 class Canvas extends React.Component<SnakeState> {
   private canvasRef: RefObject<HTMLCanvasElement>;
   props: SnakeState;
+  prevProps: SnakeState;
   timer: any;
   animater: any;
 
@@ -14,6 +15,7 @@ class Canvas extends React.Component<SnakeState> {
     super(props);
     this.canvasRef = React.createRef<HTMLCanvasElement>();
     this.props = props;
+    this.prevProps = props;
     this.timer = undefined;
     this.animater = undefined;
   }
@@ -35,23 +37,42 @@ class Canvas extends React.Component<SnakeState> {
     window.removeEventListener('keyup', this.keyDownHandler.bind(this));
   }
 
-  updateSnake() {
-    if (!this.isSnakeAlive()) {
+  componentWillReceiveProps() {
+    this.prevProps = this.props;
+  }
+
+  updateSnake(): boolean {
+
+    const { x: xDir, y: yDir } = this.props.direction;
+    let { x, y }  = this.props.position;
+    const { size, food } = this.props;
+    if ( JSON.stringify(this.props) === JSON.stringify(this.prevProps) ) {
+      return true;
+    }
+    let newXPos = x + xDir * size;
+    let newYPos = y + yDir * size;
+
+    if (!this.isSnakeAlive(newXPos, newYPos)) {
       !this.timer && clearTimeout(this.timer);
       !this.animater && window.cancelAnimationFrame(this.animater);
       this.timer = undefined;
       this.animater = undefined;
       store.dispatch(stopGame());
-      return;
+      return false;
     }
-    const { x: xDir, y: yDir } = this.props.direction;
-    let { x, y }  = this.props.position;
-    const size = this.props.size;
+    
+    if (food !== undefined) {
+      if (newXPos === food.x && newYPos === food.y)  {
+        // TODO: count score
+        this.createFood();
+      }
+    }
 
     store.dispatch(moveSnake({
       x: x + xDir * size, 
       y: y + yDir * size
     }));
+    return true;
   }
 
   drawSnake() {
@@ -64,17 +85,31 @@ class Canvas extends React.Component<SnakeState> {
     }
   }
 
-  isSnakeAlive() {
+  drawFood() {
+    let { x, y }  = this.props.food || { x: 0, y: 0 };
+    const size = this.props.size;
+    let { _canvas, _ctx } = this.getCanvasAndContext();
+    if (_canvas !== null && _ctx !== null) {
+      _ctx.fillStyle="red";
+      _ctx.fillRect(x , y, size, size);
+    }
+  }
+
+  isSnakeAlive(x: number, y: number) {
     const { _canvas, _ctx } = this.getCanvasAndContext();
-    let { position, size }  = this.props;
+    let { size }  = this.props;
+
+    // not in a game
+    if (!this.props.inGame)
+      return false;
 
     // out of canvas case
-    if ( position.x < 0 || position.y < 0 )
+    if ( x < 0 || y < 0 )
       return false;
     
     if (_canvas !== null && _ctx !== null) {
       const { width, height } = _canvas;
-      if ( position.x + size > width || position.y + size > height) {
+      if ( x + size > width || y + size > height) {
         return false;
       }
     }
@@ -108,19 +143,21 @@ class Canvas extends React.Component<SnakeState> {
   }
 
   animate() {
-    console.log('update...', this.props.direction, this.props.position);
+    console.log('update...', this.props.direction, this.props.position, this.props.inGame);
     this.clearCanvas();
-    if (!this.props.inGame) {
+    if (this.updateSnake()) {
+      this.drawFood();
+      this.drawSnake();
+      this.timer = setTimeout(() => {
+          this.animater = window.requestAnimationFrame(this.animate.bind(this))
+        }, 
+        1000 / this.props.speed
+      );
+    } else {
+      // have to game out display, but not yet impl
+      // TODO: impl 
       this.initText();
-      return;
     }
-    this.updateSnake();
-    this.drawSnake();
-    this.timer = setTimeout(() => {
-        this.animater = window.requestAnimationFrame(this.animate.bind(this))
-      }, 
-      1000 / this.props.speed
-    );
   }
 
   startSnake() {
@@ -128,7 +165,22 @@ class Canvas extends React.Component<SnakeState> {
     this.clearCanvas();
     // ready animate frame
     store.dispatch(startGame());
+    this.createFood();
     this.animate();
+  }
+
+  createFood() {
+    let xMin = 0;
+    let xMax = ((this.canvasRef.current && this.canvasRef.current.width) || 400) / this.props.size;
+    let yMin = 0;
+    let yMax = ((this.canvasRef.current && this.canvasRef.current.height) || 400) / this.props.size;
+
+    let getRand = (min: number, max: number) => {
+      return (Math.floor(Math.random() * (max-min)) + min) * this.props.size;
+    }
+    let x = getRand(xMin, xMax);
+    let y = getRand(yMin, yMax);
+    store.dispatch(createFood({x, y}));
   }
 
   keyDownHandler(evt: KeyboardEvent) {
